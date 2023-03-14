@@ -1,0 +1,28 @@
+{
+  "configurations": [
+    {
+      "name": "Mac",
+      "intelliSenseMode": "clang-x64",
+      "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+      "includePath": [
+        "${workspaceFolder}/src/**",
+        "${workspaceFolder}/build/**",
+        "/Users/timurkramar/Qt/6.4.1/macos/lib/QtWidgets.framework/Headers",
+        "/Users/timurkramar/Qt/6.4.1/macos/lib/QtCore.framework/Headers",
+        "/Users/timurkramar/Qt/6.4.1/macos/lib/QtGui.framework/Headers",
+        "/Users/timurkramar/Qt/6.4.1/macos/lib/QtDesigner.framework/Headers"
+      ],
+      "macFrameworkPath": ["/System/Library/Frameworks"],
+      "compilerPath": "/usr/bin/clang",
+      "browse": {
+        "path": [
+          "${workspaceFolder}",
+          "/Users/timurkramar/Qt/6.4.1/macos/lib/cmake/Qt6/**"
+        ],
+        "limitSymbolsToIncludedHeaders": true,
+        "databaseFilename": ""
+      }
+    }
+  ],
+  "version": 4
+}
