@@ -138,9 +138,44 @@ void ViewerWidget::setPixel(int x, int y, const QColor &color)
     }
 }
 
+//// DRAWING ////
+
+void ViewerWidget::drawAll(QColor color, unsigned int algType)
+{
+    drawLine(color, algType);
+    drawPolygon(color, algType);
+    drawCircle(color);
+    drawHermit(color);
+    drawBezier(color);
+    drawCoons(color);
+}
+
 // Draw Line functions
+void ViewerWidget::drawLine(QColor color, int algType)
+{
+    if (linePoints.length() != 2)
+        return;
+    if (linePoints[0] != linePoints[1])
+    {
+        drawLine(linePoints[0], linePoints[1], color, algType);
+    }
+}
 void ViewerWidget::drawLine(QPoint start, QPoint end, QColor color, int algType)
 {
+    if (start == end)
+    {
+        return;
+    }
+    if (!isInside(start) && !isInside(end))
+    {
+        return;
+    }
+    if (!isInside(start) || !isInside(end))
+    {
+        QPoint tmp_start = start;
+        QPoint tmp_end = end;
+        clipLine(tmp_start, tmp_end, start, end);
+    }
     if (algType == 0)
     {
         DDA(start, end, color);
@@ -379,16 +414,15 @@ void ViewerWidget::endPolygonDraw()
     {
         polygonPoints.push_back(polygonPoints[0]);
     }
-    drawPolygon();
+    drawPolygon(globalColor, rastAlg);
 }
 void ViewerWidget::addPolygonPoint(QPoint point)
 {
     polygonPoints.push_back(point);
-    drawPolygon();
+    drawPolygon(globalColor, rastAlg);
 }
-void ViewerWidget::drawPolygon()
+void ViewerWidget::drawPolygon(QColor color, int algType)
 {
-
     if (!isPolygonInside(polygonPoints))
         return;
 
@@ -399,7 +433,7 @@ void ViewerWidget::drawPolygon()
     {
         QPoint start = polygonPoints[0], end = polygonPoints[1];
         clipLine(polygonPoints[0], polygonPoints[1], start, end);
-        drawLine(start, end, globalColor, rastAlg);
+        drawLine(start, end, color, algType);
         return;
     }
     QVector<QPoint> clippedPolygon;
@@ -417,11 +451,11 @@ void ViewerWidget::drawPolygon()
 
     if (!drawPolygonActivated)
     {
-        fillPolygon(clippedPolygon, globalColor);
+        fillPolygon(clippedPolygon, color);
     }
     for (int i = 0; i < clippedPolygon.size() - 1; i++)
     {
-        drawLine(clippedPolygon[i], clippedPolygon[i + 1], globalColor, rastAlg);
+        drawLine(clippedPolygon[i], clippedPolygon[i + 1], color, algType);
     }
 }
 void ViewerWidget::fillPolygon(QVector<QPoint> points, QColor color)
@@ -627,7 +661,164 @@ void ViewerWidget::fillTriangle(QVector<QPoint> points, QColor color)
     }
 }
 
-//// Transforms ////
+// Draw circle
+void ViewerWidget::drawCircle(QColor color)
+{
+
+    if (circlePoints.size() != 2)
+        return;
+
+    auto draw_all_octagons = [=](QPoint point)
+    {
+        point = point - circlePoints[0];
+
+        QVector<QPoint> octagons = {
+            point,
+            QPoint(point.x(), -point.y()),
+            QPoint(-point.x(), point.y()),
+            QPoint(-point.x(), -point.y()),
+            QPoint(point.y(), point.x()),
+            QPoint(point.y(), -point.x()),
+            QPoint(-point.y(), point.x()),
+            QPoint(-point.y(), -point.x())};
+        for (auto octagon : octagons)
+        {
+            if (isInside(octagon + circlePoints[0]))
+                setPixel(octagon + circlePoints[0], color);
+        }
+    };
+
+    double radius = sqrt(pow(circlePoints[0].x() - circlePoints[1].x(), 2) + pow(circlePoints[0].y() - circlePoints[1].y(), 2));
+    double p = 1 - radius;
+    int x = 0, y = radius;
+    int double_x = 3, double_y = 2 * radius - 2;
+
+    while (x <= y)
+    {
+        draw_all_octagons(QPoint(x, y) + circlePoints[0]);
+
+        if (p > 0)
+        {
+            p -= double_y;
+            y--;
+            double_y -= 2;
+        }
+        p += double_x;
+        x++;
+        double_x += 2;
+    }
+
+    update();
+}
+
+// Draw Hermit
+void ViewerWidget::drawHermit(QColor color)
+{
+
+    if (hermitData.size() < 2)
+        return;
+
+    auto f0 = [=](double t)
+    { return 2 * pow(t, 3) - 3 * pow(t, 2) + 1; };
+    auto f1 = [=](double t)
+    { return -2 * pow(t, 3) + 3 * pow(t, 2); };
+    auto f2 = [=](double t)
+    { return pow(t, 3) - 2 * pow(t, 2) + t; };
+    auto f3 = [=](double t)
+    { return pow(t, 3) - pow(t, 2); };
+
+    if (hermitData.size() < 2)
+        return;
+
+    double dt = 0.05;
+    double t = 0;
+
+    drawLine(hermitData[0][0], hermitData[0][0] + hermitData[0][1], QColor(Qt::red), rastAlg);
+    for (int i = 1; i < hermitData.size(); i++)
+    {
+        drawLine(hermitData[i][0], hermitData[i][0] + hermitData[i][1], QColor(Qt::red), rastAlg);
+        QPoint Q_0 = hermitData[i - 1][0];
+        t = dt;
+        while (t < 1)
+        {
+            QPoint Q_1 = hermitData[i - 1][0] * f0(t) + hermitData[i][0] * f1(t) + hermitData[i - 1][1] * f2(t) + hermitData[i][1] * f3(t);
+            drawLine(Q_0, Q_1, color, rastAlg);
+            Q_0 = Q_1;
+            t += dt;
+        }
+        drawLine(Q_0, hermitData[i][0], color, rastAlg);
+    }
+}
+
+// Draw Bezier
+void ViewerWidget::drawBezier(QColor color)
+{
+    if (bezierPoints.size() < 2)
+        return;
+
+    for (int i = 1; i < bezierPoints.size(); i++)
+    {
+        drawLine(bezierPoints[i - 1], bezierPoints[i], QColor(Qt::red), rastAlg);
+    }
+
+    QVector<QPoint> points = bezierPoints;
+    double dt = 1. / (10 * bezierPoints.size());
+    QPoint Q_0 = points[0];
+    for (double t = dt; t < 1; t += dt)
+    {
+        points = bezierPoints;
+        while (points.size() > 1)
+        {
+            for (int i = 1; i < points.size(); i++)
+            {
+                points[i - 1] = (points[i - 1] * (1 - t) + points[i] * t);
+            }
+            points.pop_back();
+        }
+        drawLine(Q_0, points[0], color, rastAlg);
+        Q_0 = points[0];
+    }
+    drawLine(Q_0, bezierPoints[bezierPoints.size() - 1], color, rastAlg);
+}
+
+// Draw Coons B-Spline
+void ViewerWidget::drawCoons(QColor color)
+{
+
+    for (int i = 1; i < coonsPoints.size(); i++)
+    {
+        drawLine(coonsPoints[i - 1], coonsPoints[i], QColor(Qt::red), rastAlg);
+    }
+
+    if (coonsPoints.size() < 4)
+        return;
+
+    auto b0 = [=](double t)
+    { return -pow(t, 3) / 6 + pow(t, 2) / 2 - t / 2 + 1. / 6; };
+    auto b1 = [=](double t)
+    { return pow(t, 3) / 2 - pow(t, 2) + 2. / 3; };
+    auto b2 = [=](double t)
+    { return -pow(t, 3) / 2 + pow(t, 2) / 2 + t / 2 + 1. / 6; };
+    auto b3 = [=](double t)
+    { return pow(t, 3) / 6; };
+
+    double dt = 0.05;
+    for (int i = 3; i < coonsPoints.size(); i++)
+    {
+        double t = 0;
+        QPoint Q_0 = coonsPoints[i - 3] * b0(0) + coonsPoints[i - 2] * b1(0) + coonsPoints[i - 1] * b2(0) + coonsPoints[i] * b3(0);
+        while (t < 1)
+        {
+            t += dt;
+            QPoint Q_1 = coonsPoints[i - 3] * b0(t) + coonsPoints[i - 2] * b1(t) + coonsPoints[i - 1] * b2(t) + coonsPoints[i] * b3(t);
+            drawLine(Q_0, Q_1, color, rastAlg);
+            Q_0 = Q_1;
+        }
+    }
+}
+
+//// TRANSFORMATIONS ////
+
 // Translations
 void ViewerWidget::translatePoint(QPoint &point, QPoint offset)
 {
@@ -638,21 +829,60 @@ void ViewerWidget::startTranslation(QPoint origin)
     isTranslating = true;
     translateOrigin = origin;
 }
-void ViewerWidget::translateObject(QPoint new_location)
+void ViewerWidget::translateObjects(QPoint new_location)
 {
 
     if (!isTranslating)
         return;
 
+    clear();
+
     QPoint offset = new_location - translateOrigin;
-    for (int i = 0; i < polygonPoints.size(); i++)
+    if (linePoints.size() > 0)
     {
-        translatePoint(polygonPoints[i], offset);
+        for (int i = 0; i < linePoints.size(); i++)
+        {
+            translatePoint(linePoints[i], offset);
+        }
+    }
+    if (polygonPoints.size() > 0)
+    {
+        for (int i = 0; i < polygonPoints.size(); i++)
+        {
+            translatePoint(polygonPoints[i], offset);
+        }
+    }
+    if (circlePoints.size() > 0)
+    {
+        for (int i = 0; i < circlePoints.size(); i++)
+        {
+            translatePoint(circlePoints[i], offset);
+        }
+    }
+    if (hermitData.size() > 0)
+    {
+        for (int i = 0; i < hermitData.size(); i++)
+        {
+            translatePoint(hermitData[i][0], offset);
+        }
+    }
+    if (bezierPoints.size() > 0)
+    {
+        for (int i = 0; i < bezierPoints.size(); i++)
+        {
+            translatePoint(bezierPoints[i], offset);
+        }
+    }
+    if (coonsPoints.size() > 0)
+    {
+        for (int i = 0; i < coonsPoints.size(); i++)
+        {
+            translatePoint(coonsPoints[i], offset);
+        }
     }
     translateOrigin = new_location;
 
-    clear();
-    drawPolygon();
+    drawAll();
 }
 void ViewerWidget::endTranslation()
 {
@@ -669,20 +899,41 @@ void ViewerWidget::scalePoint(QPoint &point, QPoint origin, double scale_x, doub
 
     point += origin;
 }
-void ViewerWidget::scaleObject(double scale_x, double scale_y)
+void ViewerWidget::scaleObjects(double scale_x, double scale_y)
 {
-    if (polygonPoints.size() == 0)
-        return;
-
-    QPoint center = polygonPoints[0];
-
-    for (int i = 0; i < polygonPoints.size(); i++)
-    {
-        scalePoint(polygonPoints[i], center, scale_x, scale_y);
-    }
-
     clear();
-    drawPolygon();
+    if (polygonPoints.size() > 0)
+    {
+        QPoint center = polygonPoints[0];
+        for (int i = 0; i < polygonPoints.size(); i++)
+        {
+            scalePoint(polygonPoints[i], center, scale_x, scale_y);
+        }
+    }
+    if (linePoints.size() == 2)
+    {
+        scalePoint(linePoints[1], linePoints[0], scale_x, scale_y);
+        drawLine(globalColor, rastAlg);
+    }
+    if (circlePoints.size() == 2)
+    {
+        scalePoint(circlePoints[1], circlePoints[0], scale_x, scale_y);
+    }
+    if (bezierPoints.size() >= 2)
+    {
+        for (int i = 1; i < bezierPoints.size(); i++)
+        {
+            scalePoint(bezierPoints[i], bezierPoints[0], scale_x, scale_y);
+        }
+    }
+    if (coonsPoints.size() >= 4)
+    {
+        for (int i = 1; i < coonsPoints.size(); i++)
+        {
+            scalePoint(coonsPoints[i], coonsPoints[0], scale_x, scale_y);
+        }
+    }
+    drawAll();
 }
 
 // Rotation
@@ -701,27 +952,35 @@ void ViewerWidget::rotatePoint(QPoint &point, QPoint origin, double angle, bool 
 
     point += origin;
 }
-void ViewerWidget::rotateObject(double angle, bool isDegrees, bool isClockwise)
+void ViewerWidget::rotateObjects(double angle, bool isDegrees, bool isClockwise)
 {
-    if (polygonPoints.size() == 0)
-        return;
-
-    QPoint center = polygonPoints[0];
-
-    //    for (int i = 0; i < polygonPoints.size(); i++) {
-    //        center += polygonPoints[i];
-    //    }
-    //    center = QPoint(
-    //            (double) center.x() / polygonPoints.size() + 0.5,
-    //            (double) center.y() / polygonPoints.size() + 0.5);
-
-    for (int i = 0; i < polygonPoints.size(); i++)
-    {
-        rotatePoint(polygonPoints[i], center, angle, isDegrees, isClockwise);
-    }
-
     clear();
-    drawPolygon();
+    if (linePoints.size() == 2)
+    {
+        rotatePoint(linePoints[1], linePoints[0], angle, isDegrees, isClockwise);
+    }
+    if (polygonPoints.size() > 0)
+    {
+        for (int i = 0; i < polygonPoints.size(); i++)
+        {
+            rotatePoint(polygonPoints[i], polygonPoints[0], angle, isDegrees, isClockwise);
+        }
+    }
+    if (bezierPoints.size() >= 2)
+    {
+        for (int i = 1; i < bezierPoints.size(); i++)
+        {
+            rotatePoint(bezierPoints[i], bezierPoints[0], angle, isDegrees, isClockwise);
+        }
+    }
+    if (coonsPoints.size() >= 4)
+    {
+        for (int i = 1; i < coonsPoints.size(); i++)
+        {
+            rotatePoint(coonsPoints[i], coonsPoints[0], angle, isDegrees, isClockwise);
+        }
+    }
+    drawAll();
 }
 
 // Shear
@@ -734,18 +993,22 @@ void ViewerWidget::shearPoint(QPoint &point, double factor)
 
     point += center;
 }
-void ViewerWidget::shearObject(double factor)
+void ViewerWidget::shearObjects(double factor)
 {
-    if (polygonPoints.size() == 0)
-        return;
-
-    for (int i = 0; i < polygonPoints.size(); i++)
-    {
-        shearPoint(polygonPoints[i], factor);
-    }
-
     clear();
-    drawPolygon();
+
+    if (linePoints.size() == 2)
+    {
+        shearPoint(linePoints[1], factor);
+    }
+    if (polygonPoints.size() >= 2)
+    {
+        for (int i = 0; i < polygonPoints.size(); i++)
+        {
+            shearPoint(polygonPoints[i], factor);
+        }
+    }
+    drawAll();
 }
 
 // Symmetry
@@ -777,7 +1040,7 @@ void ViewerWidget::symmetryPolygon(unsigned int edge_index)
     }
 
     clear();
-    drawPolygon();
+    drawAll();
 }
 
 //// Clipping ////
@@ -801,7 +1064,7 @@ void ViewerWidget::clipLine(QPoint start, QPoint end, QPoint &clip_start, QPoint
     double tl = 0, tu = 1;
     QPoint d = end - start;
 
-    QVector<QPoint> E = {QPoint(0, 0), QPoint(0, height() - 1), QPoint(width() - 1, height() - 1), QPoint(width() - 1, 0)};
+    QVector<QPoint> E = {QPoint(10, 10), QPoint(10, height() - 10), QPoint(width() - 10, height() - 10), QPoint(width() - 10, 10)};
 
     for (int i = 0; i < 4; i++)
     {
@@ -813,12 +1076,16 @@ void ViewerWidget::clipLine(QPoint start, QPoint end, QPoint &clip_start, QPoint
         if (dn != 0)
         {
             double t = -wn / dn;
-            if (dn > 0 && 0 <= t && t <= 1)
+            if (dn > 0 && t <= 1)
+            {
                 if (tl < t)
                     tl = t;
-                else if (dn < 0 && 0 <= t && t <= 1)
-                    if (tu > t)
-                        tu = t;
+            }
+            else if (dn < 0 && 0 <= t)
+            {
+                if (tu > t)
+                    tu = t;
+            }
         }
     }
 
@@ -902,6 +1169,17 @@ QVector<QPoint> ViewerWidget::clipPolygon(QVector<QPoint> polygon)
     }
 
     return clipPolygonLeftSide(result, E[0].x());
+}
+
+void ViewerWidget::delete_objects()
+{
+    linePoints.clear();
+    polygonPoints.clear();
+    circlePoints.clear();
+    hermitData.clear();
+    bezierPoints.clear();
+    coonsPoints.clear();
+    update();
 }
 
 void ViewerWidget::clear()

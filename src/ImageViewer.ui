@@ -26,7 +26,7 @@
          <x>0</x>
          <y>0</y>
          <width>384</width>
-         <height>556</height>
+         <height>558</height>
         </rect>
        </property>
       </widget>
@@ -40,7 +40,7 @@
      <x>0</x>
      <y>0</y>
      <width>818</width>
-     <height>24</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -140,6 +140,26 @@
             <string>Polygon</string>
            </property>
           </item>
+          <item>
+           <property name="text">
+            <string>Circle</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Hermitovská kubika</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Bezierová krivka</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Coonsov kubický b-spline</string>
+           </property>
+          </item>
          </widget>
         </item>
         <item row="2" column="2">
@@ -165,7 +185,7 @@
      <item>
       <widget class="QGroupBox" name="groupBox_3">
        <property name="title">
-        <string>GroupBox</string>
+        <string>Transformácie</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="1" column="1">
@@ -291,6 +311,67 @@
             <string>CCW</string>
            </property>
           </item>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="hermit_box">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="title">
+        <string>Hermitovská kubika</string>
+       </property>
+       <layout class="QFormLayout" name="formLayout">
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="n_spinbox">
+          <property name="maximum">
+           <number>0</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>n:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0" colspan="2">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Nastavte smerový vektor:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="direction_spinbox">
+          <property name="maximum">
+           <number>360</number>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Smer</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QSpinBox" name="length_spinbox">
+          <property name="maximum">
+           <number>500</number>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_7">
+          <property name="text">
+           <string>Dĺžka</string>
+          </property>
          </widget>
         </item>
        </layout>
