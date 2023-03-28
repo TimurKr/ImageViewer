@@ -62,7 +62,14 @@ private slots:
 	void on_symmetry_button_clicked() { vW->symmetryPolygon(ui->symmetry_edge_index->value()); }
 
 	// Hermit Slots
-	void on_n_spinbox_valueChanged(int n) { setHermitBox(true, n); }
+	void on_n_spinbox_valueChanged(int n)
+	{
+		disconnect(ui->direction_spinbox, SIGNAL(valueChanged(int)), this, SLOT(on_direction_spinbox_valueChanged(int)));
+		disconnect(ui->length_spinbox, SIGNAL(valueChanged(int)), this, SLOT(on_length_spinbox_valueChanged(int)));
+		setHermitBox(true, n);
+		connect(ui->direction_spinbox, SIGNAL(valueChanged(int)), this, SLOT(on_direction_spinbox_valueChanged(int)));
+		connect(ui->length_spinbox, SIGNAL(valueChanged(int)), this, SLOT(on_length_spinbox_valueChanged(int)));
+	}
 	void on_direction_spinbox_valueChanged(int new_direction);
 	void on_length_spinbox_valueChanged(int new_length);
 };
