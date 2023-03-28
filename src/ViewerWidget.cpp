@@ -495,7 +495,8 @@ void ViewerWidget::fillPolygon(QVector<QPoint> points, QColor color)
             end = temp;
         }
 
-        // Remove the lowest pixel
+        double m = (double)(end.y() - start.y()) / (double)(end.x() - start.x());
+
         end.setY(end.y() - 1);
 
         Edge edge;
@@ -503,7 +504,7 @@ void ViewerWidget::fillPolygon(QVector<QPoint> points, QColor color)
         edge.end = end;
         edge.dy = end.y() - start.y();
         edge.x = (double)start.x();
-        edge.w = (double)(end.x() - start.x()) / (double)(end.y() - start.y());
+        edge.w = 1 / m;
         edges.push_back(edge);
     }
 
@@ -519,7 +520,7 @@ void ViewerWidget::fillPolygon(QVector<QPoint> points, QColor color)
 
     int y_min = edges[0].start.y();
     int y_max = y_min;
-    for (int i = i; i < edges.size(); i++)
+    for (int i = 0; i < edges.size(); i++)
     {
         if (edges[i].end.y() > y_max)
         {
@@ -531,6 +532,8 @@ void ViewerWidget::fillPolygon(QVector<QPoint> points, QColor color)
     TH.resize(y_max - y_min + 1);
     for (int i = 0; i < edges.size(); i++)
     {
+        qDebug() << "Edge " << i << ": start: (" << edges[i].start.x() << ", " << edges[i].start.y() << "), end:(" << edges[i].end.x() << ", " << edges[i].end.y() << "), dy: " << edges[i].dy << ", x: " << edges[i].x << ", w: " << edges[i].w << "\n";
+        qDebug() << "TH size: " << TH.size() << "\n";
         TH[edges[i].start.y() - y_min].push_back(edges[i]);
     }
 
@@ -564,6 +567,7 @@ void ViewerWidget::fillPolygon(QVector<QPoint> points, QColor color)
             if (ZAH[j].x != ZAH[j + 1].x)
             {
                 drawLine(QPoint(ZAH[j].x + 0.5, y), QPoint(ZAH[j + 1].x + 0.5, y), color, 0);
+                // drawLine(QPoint(ZAH[j].x, y), QPoint(ZAH[j + 1].x + 1, y), color, 0);
             }
         }
 
