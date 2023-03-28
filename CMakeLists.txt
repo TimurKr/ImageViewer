@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
-project(ImageViewerV2
+project(ImageViewer
     LANGUAGES CXX
 )
 
